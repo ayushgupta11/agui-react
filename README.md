@@ -1,8 +1,8 @@
-# agui-react
+# agui-hooks
 
-[![npm version](https://img.shields.io/npm/v/agui-react.svg)](https://www.npmjs.com/package/agui-react)
-[![license](https://img.shields.io/npm/l/agui-react.svg)](https://github.com/ayushgupta11/agui-react/blob/main/LICENSE)
-[![bundle size](https://img.shields.io/bundlephobia/minzip/agui-react)](https://bundlephobia.com/package/agui-react)
+[![npm version](https://img.shields.io/npm/v/agui-hooks.svg)](https://www.npmjs.com/package/agui-hooks)
+[![license](https://img.shields.io/npm/l/agui-hooks.svg)](https://github.com/ayushgupta11/agui-hooks/blob/main/LICENSE)
+[![bundle size](https://img.shields.io/bundlephobia/minzip/agui-hooks)](https://bundlephobia.com/package/agui-hooks)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue.svg)](https://www.typescriptlang.org/)
 
 > Production-ready React wrapper for the [AG-UI (Agent-GUI) protocol](https://github.com/ag-ui-protocol/ag-ui) — streaming AI agent state to frontends via SSE.
@@ -13,9 +13,9 @@
 
 **AG-UI** is an open, event-based standard for real-time communication between AI agents and frontend applications. Agents publish a stream of typed events over SSE — run lifecycle events, streaming text tokens, tool calls, and arbitrary state patches — and clients react to them in real time.
 
-## What is `agui-react`?
+## What is `agui-hooks`?
 
-`agui-react` is a React context + hooks library that handles:
+`agui-hooks` is a React context + hooks library that handles:
 
 - Opening and managing an SSE connection to any AG-UI compatible endpoint
 - Assembling streaming text messages from token events
@@ -30,7 +30,7 @@
 ## Installation
 
 ```bash
-npm install agui-react
+npm install agui-hooks
 # peer deps
 npm install react react-dom
 ```
@@ -40,7 +40,7 @@ npm install react react-dom
 ## Quick Start
 
 ```tsx
-import { AGUIProvider, useAGUI } from 'agui-react';
+import { AGUIProvider, useAGUI } from 'agui-hooks';
 
 function App() {
   return (
@@ -75,7 +75,7 @@ import {
   useAGUIRunState,
   useAGUISendMessage,
   type Message,
-} from 'agui-react';
+} from 'agui-hooks';
 
 // ─── Provider setup ────────────────────────────────────────────────────────────
 
