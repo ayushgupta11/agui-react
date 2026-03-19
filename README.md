@@ -27,6 +27,40 @@
 
 ---
 
+## Architecture Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        Your React App                           │
+│                                                                 │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │                    <AGUIProvider>                        │  │
+│  │  isConnected  isRunning  messages[]  agentState{}        │  │
+│  └──────────────────────────┬───────────────────────────────┘  │
+│                             │  useAGUI()                        │
+│  ┌──────────────────────────▼───────────────────────────────┐  │
+│  │   ChatUI  │  StatusBar  │  ToolCallLog  │  AgentDebug    │  │
+│  └──────────────────────────────────────────────────────────┘  │
+└──────────────────────────────┬──────────────────────────────────┘
+                               │ HTTP POST + SSE response
+                               │
+┌──────────────────────────────▼──────────────────────────────────┐
+│                    AG-UI Endpoint                                │
+│                  (LangGraph / CrewAI /                          │
+│                   custom Python/Node)                           │
+│                                                                 │
+│  Emits:                                                         │
+│  data: {"type":"RUN_STARTED","threadId":"t1","runId":"r1"}      │
+│  data: {"type":"TEXT_MESSAGE_START","messageId":"m1",...}       │
+│  data: {"type":"TEXT_MESSAGE_CONTENT","messageId":"m1",...}     │
+│  data: {"type":"TOOL_CALL_START","toolCallId":"tc1",...}        │
+│  data: {"type":"STATE_DELTA","delta":[{"op":"add",...}]}        │
+│  data: {"type":"RUN_FINISHED","threadId":"t1","runId":"r1"}     │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
 ## Installation
 
 ```bash
@@ -40,7 +74,7 @@ npm install react react-dom
 ## Quick Start
 
 ```tsx
-import { AGUIProvider, useAGUI } from 'agui-hooks';
+import { AGUIProvider, useAGUI } from "agui-hooks";
 
 function App() {
   return (
@@ -54,8 +88,10 @@ function Chat() {
   const { messages, sendMessage, isRunning } = useAGUI();
   return (
     <div>
-      {messages.map(m => <p key={m.id}>{m.content}</p>)}
-      <button onClick={() => sendMessage('Hello!')} disabled={isRunning}>
+      {messages.map((m) => (
+        <p key={m.id}>{m.content}</p>
+      ))}
+      <button onClick={() => sendMessage("Hello!")} disabled={isRunning}>
         Send
       </button>
     </div>
@@ -68,14 +104,14 @@ function Chat() {
 ## Full TypeScript Example
 
 ```tsx
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   AGUIProvider,
   useAGUIMessages,
   useAGUIRunState,
   useAGUISendMessage,
   type Message,
-} from 'agui-hooks';
+} from "agui-hooks";
 
 // ─── Provider setup ────────────────────────────────────────────────────────────
 
@@ -86,12 +122,12 @@ export function AgentApp() {
       security={{
         sanitizeInput: true,
         maxMessageLength: 4000,
-        csrfToken: () => document.cookie.match(/csrf=([^;]+)/)?.[1] ?? '',
+        csrfToken: () => document.cookie.match(/csrf=([^;]+)/)?.[1] ?? "",
         rateLimit: { maxRequests: 10, windowMs: 60_000 },
       }}
       retryConfig={{ maxAttempts: 3, baseDelayMs: 500 }}
-      onRunStarted={e => console.log('Run started:', e.runId)}
-      onRunError={e => console.error('Agent error:', e.message)}
+      onRunStarted={(e) => console.log("Run started:", e.runId)}
+      onRunError={(e) => console.error("Agent error:", e.message)}
     >
       <ChatUI />
     </AGUIProvider>
@@ -104,12 +140,12 @@ function ChatUI() {
   const messages = useAGUIMessages();
   const { isRunning, error } = useAGUIRunState();
   const sendMessage = useAGUISendMessage();
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState("");
 
   const submit = async () => {
     if (!input.trim()) return;
     await sendMessage(input);
-    setInput('');
+    setInput("");
   };
 
   return (
@@ -126,12 +162,12 @@ function ChatUI() {
       <div className="input-row">
         <input
           value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && submit()}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && submit()}
           placeholder="Type a message…"
         />
         <button onClick={submit} disabled={isRunning}>
-          {isRunning ? 'Thinking…' : 'Send'}
+          {isRunning ? "Thinking…" : "Send"}
         </button>
       </div>
     </div>
@@ -143,34 +179,34 @@ function ChatUI() {
 
 ## `<AGUIProvider>` Props
 
-| Prop | Type | Default | Description |
-|------|------|---------|-------------|
-| `endpoint` | `string` | **required** | AG-UI SSE endpoint URL |
-| `headers` | `Record<string, string>` | `{}` | Extra HTTP request headers |
-| `children` | `ReactNode` | **required** | Child components |
-| `debounceMs` | `number` | `16` | Debounce for `TEXT_MESSAGE_CONTENT` re-renders |
-| `maxEventHistory` | `number` | `500` | Max events retained in `events[]` |
-| `security` | `SecurityConfig` | `{}` | Security configuration |
-| `retryConfig` | `Partial<RetryConfig>` | see below | Connection retry configuration |
-| `middleware` | `EventMiddleware[]` | `[]` | Event middleware pipeline |
-| `customEventHandlers` | `Record<string, EventHandler>` | `{}` | Handlers keyed by custom event name |
-| `onRunStarted` | `EventHandler<RunStartedEvent>` | — | Called on `RUN_STARTED` |
-| `onRunFinished` | `EventHandler<RunFinishedEvent>` | — | Called on `RUN_FINISHED` |
-| `onRunError` | `EventHandler<RunErrorEvent>` | — | Called on `RUN_ERROR` |
-| `onStepStarted` | `EventHandler<StepStartedEvent>` | — | Called on `STEP_STARTED` |
-| `onStepFinished` | `EventHandler<StepFinishedEvent>` | — | Called on `STEP_FINISHED` |
-| `onTextMessageStart` | `EventHandler<TextMessageStartEvent>` | — | Called on `TEXT_MESSAGE_START` |
-| `onTextMessageContent` | `EventHandler<TextMessageContentEvent>` | — | Called on `TEXT_MESSAGE_CONTENT` |
-| `onTextMessageEnd` | `EventHandler<TextMessageEndEvent>` | — | Called on `TEXT_MESSAGE_END` |
-| `onToolCallStart` | `EventHandler<ToolCallStartEvent>` | — | Called on `TOOL_CALL_START` |
-| `onToolCallArgs` | `EventHandler<ToolCallArgsEvent>` | — | Called on `TOOL_CALL_ARGS` |
-| `onToolCallEnd` | `EventHandler<ToolCallEndEvent>` | — | Called on `TOOL_CALL_END` |
-| `onToolCallResult` | `EventHandler<ToolCallResultEvent>` | — | Called on `TOOL_CALL_RESULT` |
-| `onStateSnapshot` | `EventHandler<StateSnapshotEvent>` | — | Called on `STATE_SNAPSHOT` |
-| `onStateDelta` | `EventHandler<StateDeltaEvent>` | — | Called on `STATE_DELTA` |
-| `onMessagesSnapshot` | `EventHandler<MessagesSnapshotEvent>` | — | Called on `MESSAGES_SNAPSHOT` |
-| `onRaw` | `EventHandler<RawEvent>` | — | Called on `RAW` |
-| `onCustom` | `EventHandler<CustomEvent>` | — | Called on any `CUSTOM` event |
+| Prop                   | Type                                    | Default      | Description                                    |
+| ---------------------- | --------------------------------------- | ------------ | ---------------------------------------------- |
+| `endpoint`             | `string`                                | **required** | AG-UI SSE endpoint URL                         |
+| `headers`              | `Record<string, string>`                | `{}`         | Extra HTTP request headers                     |
+| `children`             | `ReactNode`                             | **required** | Child components                               |
+| `debounceMs`           | `number`                                | `16`         | Debounce for `TEXT_MESSAGE_CONTENT` re-renders |
+| `maxEventHistory`      | `number`                                | `500`        | Max events retained in `events[]`              |
+| `security`             | `SecurityConfig`                        | `{}`         | Security configuration                         |
+| `retryConfig`          | `Partial<RetryConfig>`                  | see below    | Connection retry configuration                 |
+| `middleware`           | `EventMiddleware[]`                     | `[]`         | Event middleware pipeline                      |
+| `customEventHandlers`  | `Record<string, EventHandler>`          | `{}`         | Handlers keyed by custom event name            |
+| `onRunStarted`         | `EventHandler<RunStartedEvent>`         | —            | Called on `RUN_STARTED`                        |
+| `onRunFinished`        | `EventHandler<RunFinishedEvent>`        | —            | Called on `RUN_FINISHED`                       |
+| `onRunError`           | `EventHandler<RunErrorEvent>`           | —            | Called on `RUN_ERROR`                          |
+| `onStepStarted`        | `EventHandler<StepStartedEvent>`        | —            | Called on `STEP_STARTED`                       |
+| `onStepFinished`       | `EventHandler<StepFinishedEvent>`       | —            | Called on `STEP_FINISHED`                      |
+| `onTextMessageStart`   | `EventHandler<TextMessageStartEvent>`   | —            | Called on `TEXT_MESSAGE_START`                 |
+| `onTextMessageContent` | `EventHandler<TextMessageContentEvent>` | —            | Called on `TEXT_MESSAGE_CONTENT`               |
+| `onTextMessageEnd`     | `EventHandler<TextMessageEndEvent>`     | —            | Called on `TEXT_MESSAGE_END`                   |
+| `onToolCallStart`      | `EventHandler<ToolCallStartEvent>`      | —            | Called on `TOOL_CALL_START`                    |
+| `onToolCallArgs`       | `EventHandler<ToolCallArgsEvent>`       | —            | Called on `TOOL_CALL_ARGS`                     |
+| `onToolCallEnd`        | `EventHandler<ToolCallEndEvent>`        | —            | Called on `TOOL_CALL_END`                      |
+| `onToolCallResult`     | `EventHandler<ToolCallResultEvent>`     | —            | Called on `TOOL_CALL_RESULT`                   |
+| `onStateSnapshot`      | `EventHandler<StateSnapshotEvent>`      | —            | Called on `STATE_SNAPSHOT`                     |
+| `onStateDelta`         | `EventHandler<StateDeltaEvent>`         | —            | Called on `STATE_DELTA`                        |
+| `onMessagesSnapshot`   | `EventHandler<MessagesSnapshotEvent>`   | —            | Called on `MESSAGES_SNAPSHOT`                  |
+| `onRaw`                | `EventHandler<RawEvent>`                | —            | Called on `RAW`                                |
+| `onCustom`             | `EventHandler<CustomEvent>`             | —            | Called on any `CUSTOM` event                   |
 
 ---
 
@@ -179,21 +215,27 @@ function ChatUI() {
 ```typescript
 interface AGUIContextValue {
   // State
-  isConnected: boolean;         // SSE connection is open
-  isRunning: boolean;           // Agent run in progress
-  error: Error | null;          // Last error
-  messages: Message[];          // Assembled message history
-  events: AGUIEvent[];          // Raw event history
-  currentRun: RunState | null;  // Active run metadata
+  isConnected: boolean; // SSE connection is open
+  isRunning: boolean; // Agent run in progress
+  error: Error | null; // Last error
+  messages: Message[]; // Assembled message history
+  events: AGUIEvent[]; // Raw event history
+  currentRun: RunState | null; // Active run metadata
   agentState: Record<string, unknown>; // Agent's key-value state
 
   // Actions
-  sendMessage(content: string, metadata?: Record<string, unknown>): Promise<void>;
+  sendMessage(
+    content: string,
+    metadata?: Record<string, unknown>,
+  ): Promise<void>;
   stopRun(): void;
   clearHistory(): void;
 
   // Event bus
-  on<T extends AGUIEvent>(eventType: T['type'] | '*', handler: EventHandler<T>): () => void;
+  on<T extends AGUIEvent>(
+    eventType: T["type"] | "*",
+    handler: EventHandler<T>,
+  ): () => void;
   emit(name: string, value: unknown): void;
 }
 ```
@@ -270,13 +312,13 @@ function Counter() {
   const { emit, on } = useAGUI();
 
   useEffect(() => {
-    const off = on('CUSTOM', e => {
-      if (e.name === 'increment') console.log('count:', e.value);
+    const off = on("CUSTOM", (e) => {
+      if (e.name === "increment") console.log("count:", e.value);
     });
     return off; // cleanup
   }, [on]);
 
-  return <button onClick={() => emit('increment', 1)}>+1</button>;
+  return <button onClick={() => emit("increment", 1)}>+1</button>;
 }
 ```
 
@@ -371,6 +413,77 @@ Intercept, transform, or cancel events in a pipeline:
 8. **Multi-agent** — `endpoint={[url1, url2]}` fan-out to multiple agents
 9. **Interrupts** — `sendInterrupt()` to pause/resume agent mid-run
 10. **Abort/cancel** — `cancelRun()` that sends a cancel signal to the endpoint
+
+---
+
+## Examples
+
+### sample-app
+
+![agui-hooks sample-app demo](./examples/sample-app/demo.png)
+
+An interactive demo built with **Vite + React 18 + TypeScript + Tailwind CSS v3**.
+
+The app is a split-pane UI — chat interface on the left, live event timeline on the right — covering all 17 AG-UI event types across five hand-crafted scenarios. The backend is fully mocked with [MSW v2](https://mswjs.io/) so **no real server is needed**.
+
+**Source:** [`examples/sample-app/`](./examples/sample-app/)
+
+#### Running locally
+
+```bash
+# 1. Install dependencies
+cd examples/sample-app
+npm install
+
+# 2. Generate the MSW service-worker file (one-time)
+npx msw init public/ --save
+
+# 3. Start the dev server
+npm run dev
+# → http://localhost:5173
+```
+
+#### What you'll see
+
+The UI has two panels:
+
+- **Left — Chat panel** renders streaming text bubbles, collapsible tool-call cards, an agent-state key/value grid, and interactive custom components (e.g. a live poll). An input bar at the bottom lets you send messages and switch scenarios mid-conversation.
+- **Right — Event timeline** logs every AG-UI event as it arrives, colour-coded by category. Click any row to expand the full JSON payload.
+
+#### Scenarios
+
+Pick a scenario from the header bar before sending a message:
+
+| Scenario | Header label | What it demonstrates |
+|---|---|---|
+| Simple chat | **Simple Chat** | `TEXT_MESSAGE_START/CONTENT/END` — token-by-token text streaming |
+| Tool call | **Tool Use** | `STEP_*` + `TOOL_CALL_START/ARGS/END/RESULT` + post-tool streamed reply |
+| Multi-step agent | **Multi-Step** | `STATE_SNAPSHOT`, multiple `STATE_DELTA` patches, two named `STEP_*` pairs |
+| Error recovery | **Error** | Partial text stream cut short by a `RUN_ERROR` event |
+| Interactive component | **Component Demo** | `CUSTOM` events (`COMPONENT_DATA_START/DATA/END`) streaming a JSON payload that renders as a live, voteable poll widget |
+
+#### Architecture of the mock
+
+```
+src/mocks/
+├── scenarios.ts   # 5 pure functions — return [{delay, event}] arrays, no agui-hooks deps
+├── handlers.ts    # MSW POST /api/chat → ReadableStream SSE, delta-timed via setTimeout
+└── browser.ts     # setupWorker export, started in main.tsx before React mounts
+```
+
+Each scenario builder returns a flat list of `{ delay, event }` pairs where `delay` is **absolute milliseconds from stream start**. The handler converts this to a delta-based `setTimeout` loop so events fire at wall-clock intervals that match the scenario's intended cadence.
+
+#### Custom component events
+
+The **Component Demo** scenario introduces three `CUSTOM` events that stream component data from the agent:
+
+| Event name | `value` shape | Purpose |
+|---|---|---|
+| `COMPONENT_DATA_START` | `{ componentId, componentType }` | Opens a new component stream |
+| `COMPONENT_DATA` | `{ componentId, delta }` | Appends a JSON chunk to the buffer |
+| `COMPONENT_DATA_END` | `{ componentId }` | Marks the stream complete; triggers render |
+
+The `useComponentStream()` hook (in `src/hooks/useComponentStream.ts`) subscribes to `CUSTOM` events via `useAGUI().on('CUSTOM', …)`, accumulates the raw string, and exposes `ComponentStreamData[]`. `ComponentRenderer` shows a skeleton while streaming and hands the parsed payload to a type-specific component (`PollComponent` for `componentType: "poll"`) once `done` is true.
 
 ---
 
